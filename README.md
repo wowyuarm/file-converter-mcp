@@ -2,21 +2,10 @@
 
 [简体中文](README_CN.md) | English
 
-[![Python Tests](https://github.com/wowyuarm/file-converter-mcp/actions/workflows/python-test.yml/badge.svg)](https://github.com/wowyuarm/file-converter-mcp/actions/workflows/python-test.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 
 This MCP server provides multiple file conversion tools for converting various document and image formats. This project is built using the [Model Context Protocol (MCP)](https://modelcontextprotocol.io) and is designed to serve AI agents that need file conversion capabilities.
-
-## Overview
-
-The File Converter MCP Server is designed to:
-
-- Convert between multiple file formats using specialized conversion tools
-- Provide a simple interface for AI agents to invoke the conversion process via the MCP protocol
-- Return the converted files as Base64 encoded strings
-- Intelligently locate uploaded files across various system directories
-- Support direct file content conversion without requiring file paths
 
 ## Features
 
