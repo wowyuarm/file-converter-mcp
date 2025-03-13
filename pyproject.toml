@@ -1,0 +1,29 @@
+[project]
+name = "file-converter-mcp"
+version = "0.1.0"
+description = "A MCP server that provides file conversion tools"
+authors = [
+    { name = "wowyuarm", email = "wuyuang1007@gmail.com" }
+]
+dependencies = [
+    "mcp[cli]",
+    "docx2pdf",
+    "pdf2docx",
+    "pillow",
+    "pandas",
+    "pdfkit",
+]
+requires-python = ">=3.10"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+
+[tool.hatch.build]
+only-packages = true
