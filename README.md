@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/wowyuarm-file-converter-mcp-badge.png)](https://mseep.ai/app/wowyuarm-file-converter-mcp)
+
 # File Converter MCP Server
 
 [简体中文](README_CN.md) | English
