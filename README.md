@@ -80,6 +80,15 @@ Optionally, you can install the server on Claude Desktop with:
 mcp install file_converter_server.py --name "File Converter"
 ```
 
+### Running with Docker
+
+You can also build and run the server using Docker:
+
+```bash
+docker build -t file-converter .
+docker run -p 3333:3333 file-converter
+```
+
 ### API / Tools
 
 The MCP server exposes the following tools:

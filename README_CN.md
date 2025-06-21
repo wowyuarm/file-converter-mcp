@@ -77,6 +77,15 @@ mcp dev file_converter_server.py
 mcp install file_converter_server.py --name "File Converter"
 ```
 
+### 使用 Docker 运行
+
+你也可以通过 Docker 构建并运行服务器：
+
+```bash
+docker build -t file-converter .
+docker run -p 3333:3333 file-converter
+```
+
 ### API / 工具
 
 该 MCP 服务器暴露以下工具：
