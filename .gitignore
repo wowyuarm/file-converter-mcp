@@ -41,6 +41,70 @@ Thumbs.db
 *.tmp
 temp/
 tmp/
+uploads/
 
 # MCP specific
-.mcp/ 
+.mcp/
+
+# Test files
+test_dependencies.py
+test.html
+
+# Documentation files (large text files)
+mcp.txt
+python-mcp.txt
+
+# Docker
+.dockerignore
+
+# Large binary files
+*.exe
+wkhtmltox.exe
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# pyenv
+.python-version
+
+# pipenv
+Pipfile.lock
+
+# PEP 582
+__pypackages__/
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# SageMath parsed files
+*.sage.py
+
+# Spyder project settings
+.spyderproject
+.spyproject
+
+# Rope project settings
+.ropeproject
+
+# mkdocs documentation
+/site
+
+# mypy
+.mypy_cache/
+.dmypy.json
+dmypy.json

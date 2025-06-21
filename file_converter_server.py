@@ -22,6 +22,7 @@ import glob
 import logging
 import sys
 import time
+import traceback
 
 # Set up logging
 logging.basicConfig(
@@ -184,6 +185,7 @@ def format_error_response(error_msg: str) -> dict:
     """
     Format error message as a proper JSON response.
     """
+    # Ensure returning a pure dictionary without any prefix
     return {
         "success": False,
         "error": str(error_msg)
@@ -193,10 +195,73 @@ def format_success_response(data: str) -> dict:
     """
     Format successful response as a proper JSON response.
     """
+    # Ensure returning a pure dictionary without any prefix
     return {
         "success": True,
         "data": data
     }
+
+# Custom JSON encoder to ensure all responses are valid JSON
+class SafeJSONEncoder(json.JSONEncoder):
+    """
+    Custom JSON encoder that safely handles various types.
+    """
+    def default(self, obj):
+        try:
+            return super().default(obj)
+        except TypeError:
+            # For objects that cannot be serialized, convert to string
+            return str(obj)
+
+# 修改debug_json_response函数
+def debug_json_response(response):
+    """
+    Debug JSON response to ensure it's valid.
+    """
+    try:
+        # 使用自定义编码器确保所有响应都是有效的JSON
+        json_str = json.dumps(response, cls=SafeJSONEncoder)
+        json.loads(json_str)  # 验证JSON是否有效
+        logger.info(f"Valid JSON response: {json_str[:100]}...")
+        return response
+    except Exception as e:
+        logger.error(f"Invalid JSON response: {str(e)}")
+        logger.error(f"Response type: {type(response)}")
+        logger.error(f"Response content: {str(response)[:100]}...")
+        # 返回一个安全的错误响应
+        return {"success": False, "error": "Internal server error: Invalid JSON response"}
+
+# Enhanced JSON parsing
+original_parse_json = mcp.parse_json if hasattr(mcp, 'parse_json') else None
+
+def enhanced_parse_json(text):
+    """Enhanced JSON parsing with detailed error information"""
+    try:
+        # Check if there's a non-JSON prefix
+        if text and not text.strip().startswith('{') and not text.strip().startswith('['):
+            # Try to find the start of JSON
+            json_start = text.find('{')
+            if json_start == -1:
+                json_start = text.find('[')
+            
+            if json_start > 0:
+                logger.warning(f"Found non-JSON prefix: '{text[:json_start]}'")
+                text = text[json_start:]
+                logger.info(f"Stripped prefix, new text: '{text[:100]}...'")
+        
+        return json.loads(text)
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON parsing error: {str(e)}")
+        logger.error(f"Problematic string: '{text}'")
+        logger.error(f"Position {e.pos}: {text[max(0, e.pos-10):e.pos]}[HERE>{text[e.pos:e.pos+1]}<HERE]{text[e.pos+1:min(len(text), e.pos+10)]}")
+        logger.error(f"Full error: {traceback.format_exc()}")
+        raise
+
+# If mcp has parse_json attribute, replace it
+if hasattr(mcp, 'parse_json'):
+    mcp.parse_json = enhanced_parse_json
+else:
+    logger.warning("Cannot enhance JSON parsing, mcp object doesn't have parse_json attribute")
 
 # DOCX to PDF conversion tool
 @mcp.tool("docx2pdf")
@@ -213,11 +278,18 @@ def convert_docx_to_pdf(input_file: str = None, file_content_base64: str = None)
     """
     try:
         logger.info(f"Starting DOCX to PDF conversion")
+        logger.info(f"Received parameters: input_file={input_file}, file_content_base64={'[BASE64 content]' if file_content_base64 else 'None'}")
+        
+        # Log more debug information
+        if input_file:
+            logger.info(f"Input file type: {type(input_file)}")
+            logger.info(f"Input file length: {len(input_file) if isinstance(input_file, str) else 'not a string'}")
+            logger.info(f"Input file first 20 chars: {input_file[:20] if isinstance(input_file, str) else 'not a string'}")
         
         # Validate that at least one input method is provided
         if input_file is None and file_content_base64 is None:
             logger.error("No input provided: both input_file and file_content_base64 are None")
-            return format_error_response("You must provide either input_file or file_content_base64")
+            return debug_json_response(format_error_response("You must provide either input_file or file_content_base64"))
         
         # Create temporary directory for processing files
         temp_dir = tempfile.mkdtemp()
@@ -243,7 +315,7 @@ def convert_docx_to_pdf(input_file: str = None, file_content_base64: str = None)
                 actual_file_path = temp_input_file
             except Exception as e:
                 logger.error(f"Failed to decode or write base64 input: {str(e)}")
-                return format_error_response(f"Error processing input file content: {str(e)}")
+                return debug_json_response(format_error_response(f"Error processing input file content: {str(e)}"))
                 
         # Handle file path mode
         else:
@@ -270,7 +342,7 @@ def convert_docx_to_pdf(input_file: str = None, file_content_base64: str = None)
                 except:
                     pass
                     
-                return format_error_response(f"Error finding DOCX file: {str(e)}")
+                return debug_json_response(format_error_response(f"Error finding DOCX file: {str(e)}"))
         
         # Import docx2pdf here to avoid dependency if not needed
         try:
@@ -286,7 +358,7 @@ def convert_docx_to_pdf(input_file: str = None, file_content_base64: str = None)
             except:
                 pass
                 
-            return format_error_response("Error importing docx2pdf library. Please ensure it's installed.")
+            return debug_json_response(format_error_response("Error importing docx2pdf library. Please ensure it's installed."))
         
         # Perform conversion
         logger.info(f"Starting conversion from {actual_file_path} to {temp_output_file}")
@@ -303,7 +375,7 @@ def convert_docx_to_pdf(input_file: str = None, file_content_base64: str = None)
             except:
                 pass
                 
-            return format_error_response(f"Error during DOCX to PDF conversion: {str(e)}")
+            return debug_json_response(format_error_response(f"Error during DOCX to PDF conversion: {str(e)}"))
         
         # Verify the output file exists
         if not os.path.exists(temp_output_file):
@@ -316,7 +388,7 @@ def convert_docx_to_pdf(input_file: str = None, file_content_base64: str = None)
             except:
                 pass
                 
-            return format_error_response(f"Conversion failed: Output file not found")
+            return debug_json_response(format_error_response(f"Conversion failed: Output file not found"))
         
         # Return base64 encoded PDF
         logger.info("Encoding PDF file as base64")
@@ -332,7 +404,7 @@ def convert_docx_to_pdf(input_file: str = None, file_content_base64: str = None)
             except Exception as e:
                 logger.warning(f"Failed to clean up temporary directory: {str(e)}")
                 
-            return format_success_response(encoded_data)
+            return debug_json_response(format_success_response(encoded_data))
         except Exception as e:
             logger.error(f"Error encoding PDF file: {str(e)}")
             
@@ -343,11 +415,11 @@ def convert_docx_to_pdf(input_file: str = None, file_content_base64: str = None)
             except:
                 pass
                 
-            return format_error_response(f"Error reading converted PDF file: {str(e)}")
+            return debug_json_response(format_error_response(f"Error reading converted PDF file: {str(e)}"))
     
     except Exception as e:
         logger.error(f"Unexpected error in convert_docx_to_pdf: {str(e)}")
-        return format_error_response(f"Error converting DOCX to PDF: {str(e)}")
+        return debug_json_response(format_error_response(f"Error converting DOCX to PDF: {str(e)}"))
 
 # PDF to DOCX conversion tool
 @mcp.tool("pdf2docx")
@@ -368,7 +440,7 @@ def convert_pdf_to_docx(input_file: str = None, file_content_base64: str = None)
         # Validate that at least one input method is provided
         if input_file is None and file_content_base64 is None:
             logger.error("No input provided: both input_file and file_content_base64 are None")
-            return format_error_response("You must provide either input_file or file_content_base64")
+            return debug_json_response(format_error_response("You must provide either input_file or file_content_base64"))
         
         # Create temporary directory for processing files
         temp_dir = tempfile.mkdtemp()
@@ -402,7 +474,7 @@ def convert_pdf_to_docx(input_file: str = None, file_content_base64: str = None)
                 except:
                     pass
                     
-                return format_error_response(f"Error processing input file content: {str(e)}")
+                return debug_json_response(format_error_response(f"Error processing input file content: {str(e)}"))
                 
         # Handle file path mode
         else:
@@ -422,7 +494,7 @@ def convert_pdf_to_docx(input_file: str = None, file_content_base64: str = None)
                 except:
                     pass
                     
-                return format_error_response(f"Error finding PDF file: {str(e)}")
+                return debug_json_response(format_error_response(f"Error finding PDF file: {str(e)}"))
         
         # Import pdf2docx here to avoid dependency if not needed
         try:
@@ -438,7 +510,7 @@ def convert_pdf_to_docx(input_file: str = None, file_content_base64: str = None)
             except:
                 pass
                 
-            return format_error_response("Error importing pdf2docx library. Please ensure it's installed.")
+            return debug_json_response(format_error_response("Error importing pdf2docx library. Please ensure it's installed."))
         
         # Perform conversion
         logger.info(f"Starting conversion from {actual_file_path} to {temp_output_file}")
@@ -457,7 +529,7 @@ def convert_pdf_to_docx(input_file: str = None, file_content_base64: str = None)
             except:
                 pass
                 
-            return format_error_response(f"Error during PDF to DOCX conversion: {str(e)}")
+            return debug_json_response(format_error_response(f"Error during PDF to DOCX conversion: {str(e)}"))
         
         # Verify the output file exists
         if not os.path.exists(temp_output_file):
@@ -470,7 +542,7 @@ def convert_pdf_to_docx(input_file: str = None, file_content_base64: str = None)
             except:
                 pass
                 
-            return format_error_response(f"Conversion failed: Output file not found")
+            return debug_json_response(format_error_response(f"Conversion failed: Output file not found"))
         
         # Return base64 encoded DOCX
         logger.info("Encoding DOCX file as base64")
@@ -486,7 +558,7 @@ def convert_pdf_to_docx(input_file: str = None, file_content_base64: str = None)
             except Exception as e:
                 logger.warning(f"Failed to clean up temporary directory: {str(e)}")
                 
-            return format_success_response(encoded_data)
+            return debug_json_response(format_success_response(encoded_data))
         except Exception as e:
             logger.error(f"Error encoding DOCX file: {str(e)}")
             
@@ -497,11 +569,11 @@ def convert_pdf_to_docx(input_file: str = None, file_content_base64: str = None)
             except:
                 pass
                 
-            return format_error_response(f"Error reading converted DOCX file: {str(e)}")
+            return debug_json_response(format_error_response(f"Error reading converted DOCX file: {str(e)}"))
     
     except Exception as e:
         logger.error(f"Unexpected error in convert_pdf_to_docx: {str(e)}")
-        return format_error_response(f"Error converting PDF to DOCX: {str(e)}")
+        return debug_json_response(format_error_response(f"Error converting PDF to DOCX: {str(e)}"))
 
 # Image format conversion tool
 @mcp.tool("convert_image")
@@ -524,13 +596,13 @@ def convert_image(input_file: str = None, file_content_base64: str = None, outpu
         # Validate that at least one input method is provided
         if input_file is None and file_content_base64 is None:
             logger.error("No input provided: both input_file and file_content_base64 are None")
-            return format_error_response("You must provide either input_file or file_content_base64")
+            return debug_json_response(format_error_response("You must provide either input_file or file_content_base64"))
             
         # Check if output format is valid
         valid_formats = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "tiff"]
         if not output_format or output_format.lower() not in valid_formats:
             logger.error(f"Invalid output format: {output_format}")
-            return format_error_response(f"Unsupported output format: {output_format}. Supported formats: {', '.join(valid_formats)}")
+            return debug_json_response(format_error_response(f"Unsupported output format: {output_format}. Supported formats: {', '.join(valid_formats)}"))
         
         # Create temporary directory for processing files
         temp_dir = tempfile.mkdtemp()
@@ -551,7 +623,7 @@ def convert_image(input_file: str = None, file_content_base64: str = None, outpu
                 except:
                     pass
                     
-                return format_error_response("input_format is required when using file_content_base64")
+                return debug_json_response(format_error_response("input_format is required when using file_content_base64"))
                 
             # Create a unique filename with timestamp
             temp_input_file = os.path.join(temp_dir, f"input_{int(time.time())}.{input_format.lower()}")
@@ -578,7 +650,7 @@ def convert_image(input_file: str = None, file_content_base64: str = None, outpu
                 except:
                     pass
                     
-                return format_error_response(f"Error processing input file content: {str(e)}")
+                return debug_json_response(format_error_response(f"Error processing input file content: {str(e)}"))
                 
         # Handle file path mode
         else:
@@ -606,7 +678,7 @@ def convert_image(input_file: str = None, file_content_base64: str = None, outpu
                 except:
                     pass
                     
-                return format_error_response(f"Error finding input image file: {str(e)}")
+                return debug_json_response(format_error_response(f"Error finding input image file: {str(e)}"))
         
         # Import PIL here to avoid dependency if not needed
         try:
@@ -622,7 +694,7 @@ def convert_image(input_file: str = None, file_content_base64: str = None, outpu
             except:
                 pass
                 
-            return format_error_response("Error importing PIL library. Please ensure pillow is installed.")
+            return debug_json_response(format_error_response("Error importing PIL library. Please ensure pillow is installed."))
         
         # Perform conversion
         logger.info(f"Starting image conversion from {actual_file_path} to {temp_output_file}")
@@ -650,7 +722,7 @@ def convert_image(input_file: str = None, file_content_base64: str = None, outpu
             except:
                 pass
                 
-            return format_error_response(f"Error during image conversion: {str(e)}")
+            return debug_json_response(format_error_response(f"Error during image conversion: {str(e)}"))
         
         # Verify the output file exists
         if not os.path.exists(temp_output_file):
@@ -663,7 +735,7 @@ def convert_image(input_file: str = None, file_content_base64: str = None, outpu
             except:
                 pass
                 
-            return format_error_response(f"Conversion failed: Output file not found")
+            return debug_json_response(format_error_response(f"Conversion failed: Output file not found"))
         
         # Return base64 encoded image
         logger.info("Encoding output image as base64")
@@ -679,7 +751,7 @@ def convert_image(input_file: str = None, file_content_base64: str = None, outpu
             except Exception as e:
                 logger.warning(f"Failed to clean up temporary directory: {str(e)}")
                 
-            return format_success_response(encoded_data)
+            return debug_json_response(format_success_response(encoded_data))
         except Exception as e:
             logger.error(f"Error encoding output image: {str(e)}")
             
@@ -690,11 +762,11 @@ def convert_image(input_file: str = None, file_content_base64: str = None, outpu
             except:
                 pass
                 
-            return format_error_response(f"Error reading converted image file: {str(e)}")
+            return debug_json_response(format_error_response(f"Error reading converted image file: {str(e)}"))
     
     except Exception as e:
         logger.error(f"Unexpected error in convert_image: {str(e)}")
-        return format_error_response(f"Error converting image: {str(e)}")
+        return debug_json_response(format_error_response(f"Error converting image: {str(e)}"))
 
 # Excel to CSV conversion tool
 @mcp.tool("excel2csv")
@@ -725,10 +797,10 @@ def convert_excel_to_csv(input_file: str) -> dict:
         df.to_csv(output_file, index=False)
         
         # Return base64 encoded CSV
-        return format_success_response(get_base64_encoded_file(output_file))
+        return debug_json_response(format_success_response(get_base64_encoded_file(output_file)))
     
     except Exception as e:
-        return format_error_response(f"Error converting Excel to CSV: {str(e)}")
+        return debug_json_response(format_error_response(f"Error converting Excel to CSV: {str(e)}"))
 
 # HTML to PDF conversion tool
 @mcp.tool("html2pdf")
@@ -807,10 +879,10 @@ def convert_html_to_pdf(input_file: str) -> dict:
                 pass
         
         # Return base64 encoded PDF
-        return format_success_response(get_base64_encoded_file(output_file))
+        return debug_json_response(format_success_response(get_base64_encoded_file(output_file)))
     
     except Exception as e:
-        return format_error_response(f"Error converting HTML to PDF: {str(e)}")
+        return debug_json_response(format_error_response(f"Error converting HTML to PDF: {str(e)}"))
 
 # Generic file conversion tool using file paths
 @mcp.tool("convert_file")
@@ -839,12 +911,12 @@ def convert_file(input_file: str = None, file_content_base64: str = None, input_
         # Validate that at least one input method is provided
         if input_file is None and file_content_base64 is None:
             logger.error("No input provided: both input_file and file_content_base64 are None")
-            return format_error_response("You must provide either input_file or file_content_base64")
+            return debug_json_response(format_error_response("You must provide either input_file or file_content_base64"))
             
         # Check that formats are specified
         if not input_format or not output_format:
             logger.error(f"Missing format specification: input_format={input_format}, output_format={output_format}")
-            return format_error_response("You must specify both input_format and output_format")
+            return debug_json_response(format_error_response("You must specify both input_format and output_format"))
             
         # Define conversion mapping: {(source_format, target_format): conversion_function}
         conversion_map = {
@@ -883,11 +955,11 @@ def convert_file(input_file: str = None, file_content_base64: str = None, input_
             
             # If we got here, the conversion is not supported
             logger.error(f"Unsupported conversion: {input_format} to {output_format}")
-            return format_error_response(f"Unsupported conversion: {input_format} to {output_format}")
+            return debug_json_response(format_error_response(f"Unsupported conversion: {input_format} to {output_format}"))
     
     except Exception as e:
         logger.error(f"Unexpected error in convert_file: {str(e)}")
-        return format_error_response(f"Error converting file: {str(e)}")
+        return debug_json_response(format_error_response(f"Error converting file: {str(e)}"))
 
 # Function to handle direct file content input
 @mcp.tool("convert_content")
@@ -917,7 +989,7 @@ def convert_content(file_content_base64: str, input_format: str, output_format: 
     
     except Exception as e:
         logger.error(f"Unexpected error in convert_content: {str(e)}")
-        return format_error_response(f"Error converting content: {str(e)}")
+        return debug_json_response(format_error_response(f"Error converting content: {str(e)}"))
 
 # Direct DOCX to PDF conversion with content
 @mcp.tool("docx2pdf_content")
@@ -931,7 +1003,8 @@ def convert_docx_to_pdf_content(file_content_base64: str) -> dict:
     Returns:
         Dictionary containing success status and either base64 encoded PDF or error message.
     """
-    return convert_docx_to_pdf(file_content_base64=file_content_base64)
+    result = convert_docx_to_pdf(file_content_base64=file_content_base64)
+    return debug_json_response(result)
 
 # Direct PDF to DOCX conversion with content
 @mcp.tool("pdf2docx_content")
@@ -945,7 +1018,8 @@ def convert_pdf_to_docx_content(file_content_base64: str) -> dict:
     Returns:
         Dictionary containing success status and either base64 encoded DOCX or error message.
     """
-    return convert_pdf_to_docx(file_content_base64=file_content_base64)
+    result = convert_pdf_to_docx(file_content_base64=file_content_base64)
+    return debug_json_response(result)
 
 # Direct Markdown to PDF conversion with content
 @mcp.tool("markdown2pdf_content")
@@ -959,7 +1033,8 @@ def convert_markdown_to_pdf_content(file_content_base64: str) -> dict:
     Returns:
         Dictionary containing success status and either base64 encoded PDF or error message.
     """
-    return convert_file(file_content_base64=file_content_base64, input_format="md", output_format="pdf")
+    result = convert_file(file_content_base64=file_content_base64, input_format="md", output_format="pdf")
+    return debug_json_response(result)
 
 if __name__ == "__main__":
     mcp.run() 

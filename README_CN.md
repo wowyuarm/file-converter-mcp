@@ -180,3 +180,75 @@ mcp install file_converter_server.py --name "File Converter"
 ## GitHub 仓库
 
 访问 GitHub 仓库：https://github.com/wowyuarm/file-converter-mcp 
+
+## MCP 服务器配置
+
+本项目可用作模型上下文协议 (MCP) 服务器，为 AI 代理提供文件转换工具。
+
+### 快速开始
+
+1. **安装依赖：**
+   ```bash
+   python -m pip install -e .
+   ```
+
+2. **启动 MCP 服务器：**
+   ```bash
+   python start_mcp_server.py
+   ```
+
+3. **配置你的 MCP 客户端**（如 Claude Desktop、Cursor）使用以下配置：
+
+   **推荐配置** (`cursor-mcp.config.json`)：
+   ```json
+   {
+     "mcpServers": {
+       "file-converter": {
+         "command": "python",
+         "args": ["file_converter_server.py"],
+         "cwd": "."
+       }
+     }
+   }
+   ```
+
+   **替代配置** (`mcp.config.json`)：
+   ```json
+   {
+     "mcpServers": {
+       "file-converter": {
+         "command": "python",
+         "args": ["file_converter_server.py"],
+         "cwd": "."
+       }
+     }
+   }
+   ```
+
+### 重要说明
+
+- **推荐使用 stdio 模式** - 这是连接 MCP 服务器最可靠的方式
+- **使用 `cursor-mcp.config.json`** 获得最简单的配置
+- **在从 Cursor 连接之前确保服务器正在运行**
+
+### 可用工具
+
+MCP 服务器提供以下工具：
+
+- **`docx2pdf`**：将 Word 文档转换为 PDF
+- **`pdf2docx`**：将 PDF 转换为 Word 文档
+- **`convert_image`**：在图像格式之间转换（PNG、JPG、WEBP 等）
+- **`excel2csv`**：将 Excel 文件转换为 CSV
+- **`html2pdf`**：将 HTML/Markdown 转换为 PDF
+- **`convert_file`**：在支持的格式之间进行通用文件转换
+- **`convert_content`**：从 base64 内容转换文件
+
+### 使用示例
+
+配置完成后，你可以在 AI 代理中使用这些工具：
+
+```
+将此 Word 文档转换为 PDF：[上传文件]
+将此图像从 PNG 转换为 JPG：[上传文件]
+将此 Excel 文件转换为 CSV：[上传文件]
+``` 

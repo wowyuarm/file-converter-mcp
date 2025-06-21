@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "file-converter": {
+      "command": "python",
+      "args": [
+        "file_converter_server.py"
+      ],
+      "cwd": "."
+    }
+  }
+} 

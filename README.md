@@ -248,4 +248,76 @@ This project is licensed under the MIT License – see the [LICENSE](LICENSE) fi
 
 ## GitHub Repository
 
-Visit the GitHub repository at: https://github.com/wowyuarm/file-converter-mcp 
+Visit the GitHub repository at: https://github.com/wowyuarm/file-converter-mcp
+
+## MCP Server Configuration
+
+This project can be used as a Model Context Protocol (MCP) server, providing file conversion tools to AI agents.
+
+### Quick Start
+
+1. **Install dependencies:**
+   ```bash
+   python -m pip install -e .
+   ```
+
+2. **Start the MCP server:**
+   ```bash
+   python start_mcp_server.py
+   ```
+
+3. **Configure your MCP client** (e.g., Claude Desktop, Cursor) with the following configuration:
+
+   **Recommended configuration** (`cursor-mcp.config.json`):
+   ```json
+   {
+     "mcpServers": {
+       "file-converter": {
+         "command": "python",
+         "args": ["file_converter_server.py"],
+         "cwd": "."
+       }
+     }
+   }
+   ```
+
+   **Alternative configuration** (`mcp.config.json`):
+   ```json
+   {
+     "mcpServers": {
+       "file-converter": {
+         "command": "python",
+         "args": ["file_converter_server.py"],
+         "cwd": "."
+       }
+     }
+   }
+   ```
+
+### Important Notes
+
+- **stdio mode is recommended** - This is the most reliable way to connect MCP servers
+- **Use `cursor-mcp.config.json`** for the simplest configuration
+- **Make sure the server is running** before connecting from Cursor
+
+### Available Tools
+
+The MCP server provides the following tools:
+
+- **`docx2pdf`**: Convert Word documents to PDF
+- **`pdf2docx`**: Convert PDF to Word documents  
+- **`convert_image`**: Convert between image formats (PNG, JPG, WEBP, etc.)
+- **`excel2csv`**: Convert Excel files to CSV
+- **`html2pdf`**: Convert HTML/Markdown to PDF
+- **`convert_file`**: Generic file conversion between supported formats
+- **`convert_content`**: Convert files from base64 content
+
+### Usage Examples
+
+Once configured, you can use the tools in your AI agent:
+
+```
+Convert this Word document to PDF: [upload file]
+Convert this image from PNG to JPG: [upload file]
+Convert this Excel file to CSV: [upload file]
+``` 
