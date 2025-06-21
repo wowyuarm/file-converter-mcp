@@ -11,7 +11,12 @@ It supports various file format conversions such as:
 The server is built using the Model Context Protocol (MCP) Python SDK.
 """
 
-from mcp.server.fastmcp import FastMCP, Context
+try:
+    from mcp.server.fastmcp import FastMCP, Context
+except ImportError as e:
+    raise ImportError(
+        "MCP 库未安装，请运行 `pip install mcp[cli]` 安装依赖后再试。"
+    ) from e
 import os
 import base64
 from pathlib import Path
